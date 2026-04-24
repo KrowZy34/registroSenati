@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Card,
   CardContent,
@@ -10,29 +10,56 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { addSurvey } from "@/lib/store";
+import { createSurvey } from "@/lib/supabase";
 import { toast } from "sonner";
-import { CheckCircle2, ClipboardList, Send } from "lucide-react";
+import { CheckCircle2, ClipboardList, Send, Loader2 } from "lucide-react";
 
-export default function StudentView() {
+interface Props {
+  prefilledId?: string | null;
+}
+
+export default function StudentView({ prefilledId }: Props) {
   const [form, setForm] = useState({
-    id: "",
+    id: prefilledId || "",
     nombre: "",
     apellido: "",
     motivo: "",
   });
   const [done, setDone] = useState<null | typeof form>(null);
+  const [loading, setLoading] = useState(false);
 
-  const submit = (e: React.FormEvent) => {
+  useEffect(() => {
+    if (prefilledId) {
+      setForm((prev) => ({ ...prev, id: prefilledId }));
+    }
+  }, [prefilledId]);
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!form.id || !form.nombre || !form.apellido || !form.motivo) {
       toast.error("Completa todos los campos");
       return;
     }
-    addSurvey(form);
-    setDone(form);
-    toast.success("Encuesta registrada", { description: `ID ${form.id}` });
-    setForm({ id: "", nombre: "", apellido: "", motivo: "" });
+
+    setLoading(true);
+    try {
+      await createSurvey({
+        id: form.id,
+        nombre: form.nombre,
+        apellido: form.apellido,
+        motivo: form.motivo,
+        attended: false,
+      });
+      setDone(form);
+      toast.success("Encuesta registrada", { description: `ID ${form.id}` });
+      setForm({ id: "", nombre: "", apellido: "", motivo: "" });
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Error al registrar";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -64,6 +91,7 @@ export default function StudentView() {
                 placeholder="Ej. 2024050"
                 value={form.id}
                 onChange={(e) => setForm({ ...form, id: e.target.value })}
+                disabled={loading}
               />
             </div>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -73,6 +101,7 @@ export default function StudentView() {
                   id="nombre"
                   value={form.nombre}
                   onChange={(e) => setForm({ ...form, nombre: e.target.value })}
+                  disabled={loading}
                 />
               </div>
               <div className="grid gap-2">
@@ -83,6 +112,7 @@ export default function StudentView() {
                   onChange={(e) =>
                     setForm({ ...form, apellido: e.target.value })
                   }
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -94,15 +124,26 @@ export default function StudentView() {
                 placeholder="Describe brevemente el motivo de tu visita"
                 value={form.motivo}
                 onChange={(e) => setForm({ ...form, motivo: e.target.value })}
+                disabled={loading}
               />
             </div>
             <Button
               type="submit"
               size="lg"
               className="bg-gradient-primary shadow-glow hover:opacity-95"
+              disabled={loading}
             >
-              <Send className="h-4 w-4" />
-              Enviar encuesta
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Registrando...
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4" />
+                  Enviar encuesta
+                </>
+              )}
             </Button>
           </form>
         </CardContent>

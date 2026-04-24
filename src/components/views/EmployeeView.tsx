@@ -4,27 +4,56 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { addAttention, findSurveyById, type Survey } from "@/lib/store";
+import {
+  createAttention,
+  getSurveyById,
+  updateSurvey,
+  type Survey,
+} from "@/lib/supabase";
 import { toast } from "sonner";
-import { Search, UserCheck, User, Calendar, FileText, Headset, X, GraduationCap } from "lucide-react";
+import {
+  Search,
+  UserCheck,
+  User,
+  Calendar,
+  FileText,
+  Headset,
+  X,
+  GraduationCap,
+  Loader2,
+} from "lucide-react";
 
 interface Props {
+  employeeUsername: string;
   employeeName: string;
 }
 
-export default function EmployeeView({ employeeName }: Props) {
+export default function EmployeeView({
+  employeeUsername,
+  employeeName,
+}: Props) {
   const [query, setQuery] = useState("");
   const [result, setResult] = useState<Survey | null | "notfound">(null);
   const [notes, setNotes] = useState("");
   const [carrera, setCarrera] = useState("");
+  const [loading, setLoading] = useState(false);
 
-  const search = (e: React.FormEvent) => {
+  const search = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!query.trim()) return;
-    const found = findSurveyById(query);
-    setResult(found ?? "notfound");
-    setNotes("");
-    setCarrera(found?.carrera ?? "");
+
+    setLoading(true);
+    try {
+      const found = await getSurveyById(query);
+      setResult(found ?? "notfound");
+      setNotes("");
+      setCarrera(found?.carrera ?? "");
+    } catch (error) {
+      setResult("notfound");
+      console.error(error);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const cancel = () => {
@@ -34,20 +63,36 @@ export default function EmployeeView({ employeeName }: Props) {
     setCarrera("");
   };
 
-  const completeAttention = () => {
+  const completeAttention = async () => {
     if (!result || result === "notfound") return;
     if (!carrera.trim()) {
       toast.error("Indica la carrera del estudiante");
       return;
     }
-    addAttention({
-      studentId: result.id,
-      employee: employeeName,
-      notes: notes || "Atención completada",
-      carrera: carrera.trim(),
-    });
-    toast.success("Atención registrada", { description: `${result.nombre} ${result.apellido}` });
-    cancel();
+
+    setLoading(true);
+    try {
+      await createAttention({
+        student_id: result.id,
+        employee: employeeUsername,
+        notes: notes || "Atención completada",
+        carrera: carrera.trim(),
+      });
+
+      // Marcar como atendido
+      await updateSurvey(result.id, { attended: true });
+
+      toast.success("Atención registrada", {
+        description: `${result.nombre} ${result.apellido}`,
+      });
+      cancel();
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : "Error al registrar atención";
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -55,10 +100,15 @@ export default function EmployeeView({ employeeName }: Props) {
       <div className="mb-8 animate-fade-in">
         <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-border/70 bg-card px-3 py-1 text-xs text-muted-foreground">
           <Headset className="h-3.5 w-3.5" />
-          Atendiendo como <span className="font-medium text-foreground">{employeeName}</span>
+          Atendiendo como{" "}
+          <span className="font-medium text-foreground">{employeeName}</span>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Atender estudiante</h1>
-        <p className="mt-2 text-muted-foreground">Busca por ID para ver los datos de la encuesta.</p>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Atender estudiante
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Busca por ID para ver los datos de la encuesta.
+        </p>
       </div>
 
       <Card className="border-border/60 shadow-elegant">
@@ -68,17 +118,33 @@ export default function EmployeeView({ employeeName }: Props) {
         <CardContent>
           <form onSubmit={search} className="flex flex-col gap-3 sm:flex-row">
             <div className="grid flex-1 gap-2">
-              <Label htmlFor="search" className="sr-only">ID</Label>
+              <Label htmlFor="search" className="sr-only">
+                ID
+              </Label>
               <Input
                 id="search"
                 placeholder="ID del estudiante (ej. 2021003)"
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
+                disabled={loading}
               />
             </div>
-            <Button type="submit" className="bg-gradient-primary">
-              <Search className="h-4 w-4" />
-              Buscar
+            <Button
+              type="submit"
+              className="bg-gradient-primary"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Buscando...
+                </>
+              ) : (
+                <>
+                  <Search className="h-4 w-4" />
+                  Buscar
+                </>
+              )}
             </Button>
           </form>
         </CardContent>
@@ -86,7 +152,8 @@ export default function EmployeeView({ employeeName }: Props) {
 
       {result === "notfound" && (
         <div className="mt-6 rounded-xl border border-destructive/30 bg-destructive/5 p-4 text-sm text-destructive animate-fade-in">
-          No se encontró ningún estudiante con ese ID. Pídele que llene la encuesta primero.
+          No se encontró ningún estudiante con ese ID. Pídele que llene la
+          encuesta primero.
         </div>
       )}
 
@@ -104,16 +171,27 @@ export default function EmployeeView({ employeeName }: Props) {
           </CardHeader>
           <CardContent className="grid gap-5">
             <div className="grid gap-3 sm:grid-cols-2">
-              <Field icon={<User className="h-4 w-4" />} label="Nombre completo" value={`${result.nombre} ${result.apellido}`} />
-              <Field icon={<FileText className="h-4 w-4" />} label="ID" value={result.id} mono />
+              <Field
+                icon={<User className="h-4 w-4" />}
+                label="Nombre completo"
+                value={`${result.nombre} ${result.apellido}`}
+              />
+              <Field
+                icon={<FileText className="h-4 w-4" />}
+                label="ID"
+                value={result.id}
+                mono
+              />
               <Field
                 icon={<Calendar className="h-4 w-4" />}
                 label="Fecha de encuesta"
-                value={new Date(result.createdAt).toLocaleString()}
+                value={new Date(result.created_at).toLocaleString()}
               />
             </div>
             <div className="rounded-lg border border-border/60 bg-card p-4">
-              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">Motivo</p>
+              <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Motivo
+              </p>
               <p className="text-sm">{result.motivo}</p>
             </div>
 
@@ -127,6 +205,7 @@ export default function EmployeeView({ employeeName }: Props) {
                 value={carrera}
                 onChange={(e) => setCarrera(e.target.value)}
                 placeholder="Ej. Ingeniería en Sistemas"
+                disabled={loading}
               />
             </div>
 
@@ -138,15 +217,36 @@ export default function EmployeeView({ employeeName }: Props) {
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
                 placeholder="Resumen de lo realizado..."
+                disabled={loading}
               />
             </div>
 
             <div className="flex flex-col gap-2 sm:flex-row">
-              <Button onClick={completeAttention} size="lg" className="flex-1 bg-gradient-primary shadow-glow">
-                <UserCheck className="h-4 w-4" />
-                Marcar atención completada
+              <Button
+                onClick={completeAttention}
+                size="lg"
+                className="flex-1 bg-gradient-primary shadow-glow"
+                disabled={loading}
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  <>
+                    <UserCheck className="h-4 w-4" />
+                    Marcar atención completada
+                  </>
+                )}
               </Button>
-              <Button onClick={cancel} size="lg" variant="outline" className="sm:w-auto">
+              <Button
+                onClick={cancel}
+                size="lg"
+                variant="outline"
+                className="sm:w-auto"
+                disabled={loading}
+              >
                 <X className="h-4 w-4" />
                 Cancelar
               </Button>
@@ -158,14 +258,26 @@ export default function EmployeeView({ employeeName }: Props) {
   );
 }
 
-function Field({ icon, label, value, mono }: { icon: React.ReactNode; label: string; value: string; mono?: boolean }) {
+function Field({
+  icon,
+  label,
+  value,
+  mono,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  mono?: boolean;
+}) {
   return (
     <div className="rounded-lg border border-border/60 bg-card p-3">
       <div className="mb-1 flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {icon}
         {label}
       </div>
-      <p className={`text-sm font-medium ${mono ? "font-mono" : ""}`}>{value}</p>
+      <p className={`text-sm font-medium ${mono ? "font-mono" : ""}`}>
+        {value}
+      </p>
     </div>
   );
 }

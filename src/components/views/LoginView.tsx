@@ -1,27 +1,31 @@
 import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { authenticate } from "@/lib/store";
 import { useAuth } from "@/hooks/useAuth";
 import { toast } from "sonner";
-import { LogIn, Lock, User } from "lucide-react";
+import { LogIn, Lock, User, Loader2 } from "lucide-react";
 
 export default function LoginView() {
-  const { login } = useAuth();
+  const { login, loading, error } = useAuth();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  const submit = (e: React.FormEvent) => {
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const acc = authenticate(username, password);
-    if (!acc) {
-      toast.error("Credenciales incorrectas");
-      return;
+    const success = await login(username, password);
+    if (success) {
+      toast.success(`Bienvenido, ${username}`);
+    } else {
+      toast.error(error || "Credenciales incorrectas");
     }
-    login(acc);
-    toast.success(`Bienvenido, ${acc.name}`);
   };
 
   return (
@@ -31,8 +35,12 @@ export default function LoginView() {
           <Lock className="h-3.5 w-3.5" />
           Acceso restringido
         </div>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Iniciar sesión</h1>
-        <p className="mt-2 text-muted-foreground">Empleados y administradores.</p>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Iniciar sesión
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Empleados y administradores.
+        </p>
       </div>
 
       <Card className="border-border/60 shadow-elegant animate-scale-in">
@@ -53,6 +61,7 @@ export default function LoginView() {
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   autoComplete="username"
+                  disabled={loading}
                 />
               </div>
             </div>
@@ -68,19 +77,42 @@ export default function LoginView() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   autoComplete="current-password"
+                  disabled={loading}
                 />
               </div>
             </div>
-            <Button type="submit" size="lg" className="bg-gradient-primary shadow-glow">
-              <LogIn className="h-4 w-4" />
-              Entrar
+            <Button
+              type="submit"
+              size="lg"
+              className="bg-gradient-primary shadow-glow"
+              disabled={loading}
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Entrando...
+                </>
+              ) : (
+                <>
+                  <LogIn className="h-4 w-4" />
+                  Entrar
+                </>
+              )}
             </Button>
           </form>
 
           <div className="mt-6 rounded-lg border border-dashed border-border/70 bg-muted/40 p-3 text-xs text-muted-foreground">
-            <p className="mb-1 font-medium text-foreground">Cuentas de prueba</p>
-            <p>Empleado: <span className="font-mono">ana</span> / <span className="font-mono">1234</span></p>
-            <p>Admin: <span className="font-mono">admin</span> / <span className="font-mono">admin</span></p>
+            <p className="mb-1 font-medium text-foreground">
+              Cuentas de prueba
+            </p>
+            <p>
+              Empleado: <span className="font-mono">ana</span> /{" "}
+              <span className="font-mono">1234</span>
+            </p>
+            <p>
+              Admin: <span className="font-mono">admin</span> /{" "}
+              <span className="font-mono">admin</span>
+            </p>
           </div>
         </CardContent>
       </Card>

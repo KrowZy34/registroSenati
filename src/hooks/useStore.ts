@@ -1,22 +1,42 @@
 import { useEffect, useState } from "react";
-import { getAttentions, getSurveys, type Attention, type Survey } from "@/lib/store";
+import {
+  getAttentions,
+  getSurveys,
+  type Attention,
+  type Survey,
+} from "@/lib/supabase";
 
 export function useStore() {
-  const [surveys, setSurveys] = useState<Survey[]>(() => getSurveys());
-  const [attentions, setAttentions] = useState<Attention[]>(() => getAttentions());
+  const [surveys, setSurveys] = useState<Survey[]>([]);
+  const [attentions, setAttentions] = useState<Attention[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchData = async () => {
+    try {
+      setLoading(true);
+      const [surveysData, attentionsData] = await Promise.all([
+        getSurveys(),
+        getAttentions(),
+      ]);
+      setSurveys(surveysData || []);
+      setAttentions(attentionsData || []);
+      setError(null);
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Error cargando datos";
+      setError(message);
+      console.error("Error fetching store data:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const update = () => {
-      setSurveys(getSurveys());
-      setAttentions(getAttentions());
-    };
-    window.addEventListener("sim-store-update", update);
-    window.addEventListener("storage", update);
-    return () => {
-      window.removeEventListener("sim-store-update", update);
-      window.removeEventListener("storage", update);
-    };
+    fetchData();
+    const interval = setInterval(fetchData, 5000); // Actualizar cada 5 segundos
+    return () => clearInterval(interval);
   }, []);
 
-  return { surveys, attentions };
+  return { surveys, attentions, loading, error, refetch: fetchData };
 }

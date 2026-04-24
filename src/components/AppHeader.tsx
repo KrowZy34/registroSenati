@@ -2,7 +2,7 @@ import { GraduationCap, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/hooks/useAuth";
 
-type Tab = "student" | "login";
+type Tab = "student" | "scan" | "login";
 
 interface Props {
   tab: Tab;
@@ -10,7 +10,8 @@ interface Props {
 }
 
 const tabs: { key: Tab; label: string }[] = [
-  { key: "student", label: "Estudiante" },
+  { key: "scan", label: "Escanear QR" },
+  { key: "student", label: "Registro manual" },
   { key: "login", label: "Iniciar sesión" },
 ];
 

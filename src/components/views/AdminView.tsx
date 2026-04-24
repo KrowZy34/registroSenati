@@ -1,8 +1,30 @@
 import { useMemo } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useStore } from "@/hooks/useStore";
-import { Activity, ClipboardCheck, Clock, ShieldCheck, TrendingUp, Users, BarChart3, PieChart as PieIcon } from "lucide-react";
+import {
+  Activity,
+  ClipboardCheck,
+  Clock,
+  ShieldCheck,
+  TrendingUp,
+  Users,
+  BarChart3,
+  PieChart as PieIcon,
+} from "lucide-react";
 import {
   Bar,
   BarChart,
@@ -28,20 +50,24 @@ const CHART_COLORS = [
 ];
 
 export default function AdminView() {
-  const { surveys, attentions } = useStore();
+  const { surveys, attentions, loading } = useStore();
 
   const stats = useMemo(() => {
     const total = surveys.length;
     const attended = surveys.filter((s) => s.attended).length;
     const pending = total - attended;
     const today = new Date().toDateString();
-    const todayCount = surveys.filter((s) => new Date(s.createdAt).toDateString() === today).length;
+    const todayCount = surveys.filter(
+      (s) => new Date(s.createdAt).toDateString() === today,
+    ).length;
     return { total, attended, pending, todayCount };
   }, [surveys]);
 
   const ranking = useMemo(() => {
     const map = new Map<string, number>();
-    attentions.forEach((a) => map.set(a.employee, (map.get(a.employee) ?? 0) + 1));
+    attentions.forEach((a) =>
+      map.set(a.employee, (map.get(a.employee) ?? 0) + 1),
+    );
     return Array.from(map.entries())
       .map(([employee, count]) => ({ employee, count }))
       .sort((a, b) => b.count - a.count);
@@ -61,9 +87,16 @@ export default function AdminView() {
       const d = new Date();
       d.setDate(d.getDate() - i);
       const key = d.toDateString();
-      const label = d.toLocaleDateString(undefined, { weekday: "short", day: "numeric" });
-      const encuestas = surveys.filter((s) => new Date(s.createdAt).toDateString() === key).length;
-      const ats = attentions.filter((a) => new Date(a.createdAt).toDateString() === key).length;
+      const label = d.toLocaleDateString(undefined, {
+        weekday: "short",
+        day: "numeric",
+      });
+      const encuestas = surveys.filter(
+        (s) => new Date(s.createdAt).toDateString() === key,
+      ).length;
+      const ats = attentions.filter(
+        (a) => new Date(a.createdAt).toDateString() === key,
+      ).length;
       days.push({ day: label, encuestas, atenciones: ats });
     }
     return days;
@@ -80,7 +113,10 @@ export default function AdminView() {
   }, [surveys]);
 
   const recent = useMemo(
-    () => [...surveys].sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt)).slice(0, 8),
+    () =>
+      [...surveys]
+        .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+        .slice(0, 8),
     [surveys],
   );
 
@@ -91,16 +127,46 @@ export default function AdminView() {
           <ShieldCheck className="h-3.5 w-3.5" />
           Panel de administrador
         </div>
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">Estadísticas y procesos</h1>
-        <p className="mt-2 text-muted-foreground">Visión general del flujo de atención estudiantil.</p>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          Estadísticas y procesos
+        </h1>
+        <p className="mt-2 text-muted-foreground">
+          Visión general del flujo de atención estudiantil.
+        </p>
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard icon={<ClipboardCheck className="h-5 w-5" />} label="Encuestas totales" value={stats.total} tone="primary" />
-        <StatCard icon={<Activity className="h-5 w-5" />} label="Atendidos" value={stats.attended} tone="success" />
-        <StatCard icon={<Clock className="h-5 w-5" />} label="Pendientes" value={stats.pending} tone="warning" />
-        <StatCard icon={<TrendingUp className="h-5 w-5" />} label="Hoy" value={stats.todayCount} tone="accent" />
+        <StatCard
+          icon={<ClipboardCheck className="h-5 w-5" />}
+          label="Encuestas totales"
+          value={stats.total}
+          tone="primary"
+        />
+        <StatCard
+          icon={<Activity className="h-5 w-5" />}
+          label="Atendidos"
+          value={stats.attended}
+          tone="success"
+        />
+        <StatCard
+          icon={<Clock className="h-5 w-5" />}
+          label="Pendientes"
+          value={stats.pending}
+          tone="warning"
+        />
+        <StatCard
+          icon={<TrendingUp className="h-5 w-5" />}
+          label="Hoy"
+          value={stats.todayCount}
+          tone="accent"
+        />
       </div>
+
+      {loading && (
+        <div className="mt-6 rounded-lg border border-border/60 bg-muted/40 p-8 text-center">
+          <p className="text-sm text-muted-foreground">Cargando datos...</p>
+        </div>
+      )}
 
       {/* Charts */}
       <div className="mt-6 grid gap-6 lg:grid-cols-2">
@@ -115,9 +181,20 @@ export default function AdminView() {
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
               <LineChart data={last7Days}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="hsl(var(--border))"
+                />
+                <XAxis
+                  dataKey="day"
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                />
+                <YAxis
+                  stroke="hsl(var(--muted-foreground))"
+                  fontSize={12}
+                  allowDecimals={false}
+                />
                 <Tooltip
                   contentStyle={{
                     background: "hsl(var(--card))",
@@ -126,8 +203,20 @@ export default function AdminView() {
                   }}
                 />
                 <Legend />
-                <Line type="monotone" dataKey="encuestas" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3 }} />
-                <Line type="monotone" dataKey="atenciones" stroke="hsl(var(--accent))" strokeWidth={2.5} dot={{ r: 3 }} />
+                <Line
+                  type="monotone"
+                  dataKey="encuestas"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
+                <Line
+                  type="monotone"
+                  dataKey="atenciones"
+                  stroke="hsl(var(--accent))"
+                  strokeWidth={2.5}
+                  dot={{ r: 3 }}
+                />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
@@ -144,7 +233,14 @@ export default function AdminView() {
           <CardContent>
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={statusData} dataKey="value" nameKey="name" outerRadius={90} innerRadius={50} paddingAngle={2}>
+                <Pie
+                  data={statusData}
+                  dataKey="value"
+                  nameKey="name"
+                  outerRadius={90}
+                  innerRadius={50}
+                  paddingAngle={2}
+                >
                   <Cell fill="hsl(var(--success))" />
                   <Cell fill="hsl(var(--warning))" />
                 </Pie>
@@ -167,17 +263,39 @@ export default function AdminView() {
               <Users className="h-4 w-4 text-primary" />
               Empleados más activos
             </CardTitle>
-            <CardDescription>Atenciones registradas por empleado</CardDescription>
+            <CardDescription>
+              Atenciones registradas por empleado
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {ranking.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aún no hay atenciones registradas.</p>
+              <p className="text-sm text-muted-foreground">
+                Aún no hay atenciones registradas.
+              </p>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={ranking} layout="vertical" margin={{ left: 12 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                  <XAxis type="number" stroke="hsl(var(--muted-foreground))" fontSize={12} allowDecimals={false} />
-                  <YAxis type="category" dataKey="employee" stroke="hsl(var(--muted-foreground))" fontSize={12} width={100} />
+                <BarChart
+                  data={ranking}
+                  layout="vertical"
+                  margin={{ left: 12 }}
+                >
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    stroke="hsl(var(--border))"
+                  />
+                  <XAxis
+                    type="number"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    allowDecimals={false}
+                  />
+                  <YAxis
+                    type="category"
+                    dataKey="employee"
+                    stroke="hsl(var(--muted-foreground))"
+                    fontSize={12}
+                    width={100}
+                  />
                   <Tooltip
                     contentStyle={{
                       background: "hsl(var(--card))",
@@ -185,7 +303,11 @@ export default function AdminView() {
                       borderRadius: 8,
                     }}
                   />
-                  <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                  <Bar
+                    dataKey="count"
+                    fill="hsl(var(--primary))"
+                    radius={[0, 6, 6, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             )}
@@ -198,17 +320,30 @@ export default function AdminView() {
               <PieIcon className="h-4 w-4 text-primary" />
               Distribución por carrera
             </CardTitle>
-            <CardDescription>Estudiantes atendidos según carrera</CardDescription>
+            <CardDescription>
+              Estudiantes atendidos según carrera
+            </CardDescription>
           </CardHeader>
           <CardContent>
             {carreraData.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Aún no hay carreras registradas.</p>
+              <p className="text-sm text-muted-foreground">
+                Aún no hay carreras registradas.
+              </p>
             ) : (
               <ResponsiveContainer width="100%" height={260}>
                 <PieChart>
-                  <Pie data={carreraData} dataKey="value" nameKey="name" outerRadius={90} label>
+                  <Pie
+                    data={carreraData}
+                    dataKey="value"
+                    nameKey="name"
+                    outerRadius={90}
+                    label
+                  >
                     {carreraData.map((_, i) => (
-                      <Cell key={i} fill={CHART_COLORS[i % CHART_COLORS.length]} />
+                      <Cell
+                        key={i}
+                        fill={CHART_COLORS[i % CHART_COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip
@@ -229,7 +364,9 @@ export default function AdminView() {
       <Card className="mt-6 border-border/60 shadow-sm">
         <CardHeader>
           <CardTitle className="text-lg">Encuestas recientes</CardTitle>
-          <CardDescription>Últimos estudiantes que llenaron la encuesta</CardDescription>
+          <CardDescription>
+            Últimos estudiantes que llenaron la encuesta
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="overflow-hidden rounded-lg border border-border/60">
@@ -239,14 +376,19 @@ export default function AdminView() {
                   <TableHead>ID</TableHead>
                   <TableHead>Estudiante</TableHead>
                   <TableHead className="hidden sm:table-cell">Motivo</TableHead>
-                  <TableHead className="hidden md:table-cell">Carrera</TableHead>
+                  <TableHead className="hidden md:table-cell">
+                    Carrera
+                  </TableHead>
                   <TableHead className="text-right">Estado</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {recent.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-muted-foreground">
+                    <TableCell
+                      colSpan={5}
+                      className="text-center text-muted-foreground"
+                    >
                       Sin registros
                     </TableCell>
                   </TableRow>
@@ -307,10 +449,14 @@ function StatCard({
       <CardContent className="p-5">
         <div className="flex items-start justify-between">
           <div>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">{label}</p>
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              {label}
+            </p>
             <p className="mt-2 text-3xl font-bold tracking-tight">{value}</p>
           </div>
-          <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${tones[tone]}`}>
+          <div
+            className={`flex h-10 w-10 items-center justify-center rounded-lg bg-gradient-to-br ${tones[tone]}`}
+          >
             {icon}
           </div>
         </div>
